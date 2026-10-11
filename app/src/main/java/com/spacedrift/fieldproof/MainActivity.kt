@@ -1,4 +1,3 @@
-
 package com.spacedrift.fieldproof
 
 import android.os.Bundle
@@ -12,465 +11,726 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.NoteAdd
-import androidx.compose.material.icons.outlined.CameraAlt
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.CloudOff
-import androidx.compose.material.icons.outlined.Description
-import androidx.compose.material.icons.outlined.NoteAdd
-import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.Divider
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import dagger.hilt.android.AndroidEntryPoint
+import com.spacedrift.fieldproof.data.local.ChecklistItemEntity
+import com.spacedrift.fieldproof.data.local.EvidenceEntity
+import com.spacedrift.fieldproof.data.local.InspectionEntity
+import com.spacedrift.fieldproof.ui.inspection.InspectionViewModel
+import com.spacedrift.fieldproof.ui.theme.FieldProofTheme
+import com.spacedrift.fieldproof.ui.camera.CameraCaptureScreen
 
-data class ChecklistItem(
-    val title: String,
-    val required: Boolean,
-    val complete: Boolean = false
-)
-
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
             FieldProofTheme {
-                InspectionScreen()
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    FieldProofApp()
+                }
             }
+        }
+    }
+}
+
+@Composable
+fun FieldProofApp(
+    viewModel: InspectionViewModel = hiltViewModel()
+) {
+    val inspections by viewModel.inspections.collectAsState()
+
+    var selectedInspection by remember {
+        mutableStateOf<InspectionEntity?>(null)
+    }
+
+    if (selectedInspection == null) {
+        InspectionListScreen(
+            inspections = inspections,
+            onCreateInspection = {
+                viewModel.createInspection(
+                    title = "New Facility Inspection",
+                    location = "Demo Site"
+                )
+            },
+            onInspectionClick = {
+                selectedInspection = it
+            }
+        )
+    } else {
+        InspectionDetailScreen(
+            inspection = selectedInspection!!,
+            viewModel = viewModel,
+            onBack = {
+                selectedInspection = null
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun InspectionListScreen(
+    inspections: List<InspectionEntity>,
+    onCreateInspection: () -> Unit,
+    onInspectionClick: (InspectionEntity) -> Unit
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "FieldProof",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            )
+        }
+    ) { padding ->
+
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OfflineStatusCard()
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Inspections",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            if (inspections.isEmpty()) {
+
+                item {
+                    EmptyInspectionCard(
+                        onCreateInspection = onCreateInspection
+                    )
+                }
+
+            } else {
+
+                items(
+                    items = inspections,
+                    key = { it.id }
+                ) { inspection ->
+
+                    InspectionCard(
+                        inspection = inspection,
+                        onClick = {
+                            onInspectionClick(inspection)
+                        }
+                    )
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Button(
+                        onClick = onCreateInspection,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = null
+                        )
+
+                        Spacer(modifier = Modifier.padding(4.dp))
+
+                        Text("New inspection")
+                    }
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun OfflineStatusCard() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.CloudOff,
+                contentDescription = null
+            )
+
+            Spacer(modifier = Modifier.padding(8.dp))
+
+            Column {
+                Text(
+                    text = "Offline mode",
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    text = "Changes are stored locally and can sync later.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyInspectionCard(
+    onCreateInspection: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            Text(
+                text = "No inspections yet",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Create an inspection to start capturing field evidence."
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = onCreateInspection,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = null
+                )
+
+                Spacer(modifier = Modifier.padding(4.dp))
+
+                Text("Create inspection")
+            }
+        }
+    }
+}
+
+@Composable
+private fun InspectionCard(
+    inspection: InspectionEntity,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onClick
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = inspection.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
+                FilterChip(
+                    selected = true,
+                    onClick = {},
+                    label = {
+                        Text(inspection.status)
+                    }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = inspection.location,
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InspectionScreen() {
+private fun InspectionDetailScreen(
+    inspection: InspectionEntity,
+    viewModel: InspectionViewModel,
+    onBack: () -> Unit
+) {
+    val checklist by viewModel
+        .observeChecklist(inspection.id)
+        .collectAsState(initial = emptyList())
 
-    var photoCaptured by remember { mutableStateOf(false) }
-    var noteAdded by remember { mutableStateOf(false) }
-    var submitted by remember { mutableStateOf(false) }
+    val evidence by viewModel
+        .observeEvidence(inspection.id)
+        .collectAsState(initial = emptyList())
 
-    var items by remember {
-        mutableStateOf(
-            listOf(
-                ChecklistItem("Equipment condition", true),
-                ChecklistItem("Safety signage", true),
-                ChecklistItem("Access area", true),
-                ChecklistItem("Additional observations", false)
-            )
-        )
+    var noteText by remember {
+        mutableStateOf("")
     }
 
-    val requiredItems = items.filter { it.required }
-    val completedRequired = requiredItems.count { it.complete }
-    val progress = completedRequired.toFloat() / requiredItems.size
+    var showCamera by remember {
+        mutableStateOf(false)
+    }
 
-    val readyToSubmit =
-        completedRequired == requiredItems.size &&
-                photoCaptured &&
-                noteAdded
+    if (showCamera) {
+        CameraCaptureScreen(
+            onPhotoCaptured = { uri ->
+
+                viewModel.addEvidence(
+                    inspectionId = inspection.id,
+                    checklistItemId = null,
+                    type = "PHOTO",
+                    localUri = uri.toString(),
+                    note = null
+                )
+
+                showCamera = false
+            },
+            onClose = {
+                showCamera = false
+            }
+        )
+
+        return
+    }
+
+    val requiredItems = checklist.filter { it.required }
+    val completedRequired = requiredItems.count { it.completed }
+    val allRequiredComplete =
+        requiredItems.isNotEmpty() &&
+                completedRequired == requiredItems.size
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            text = "FieldProof",
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        Text(
-                            text = "Inspection #FP-1001",
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    }
+                    Text("Inspection")
                 },
-                actions = {
-                    Icon(
-                        imageVector = Icons.Outlined.CloudOff,
-                        contentDescription = "Offline"
-                    )
-
-                    Spacer(modifier = Modifier.width(16.dp))
+                navigationIcon = {
+                    OutlinedButton(
+                        onClick = onBack,
+                        modifier = Modifier.padding(start = 8.dp)
+                    ) {
+                        Text("Back")
+                    }
                 }
             )
         }
     ) { padding ->
 
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
 
-            // Offline status
-
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.secondaryContainer
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.CloudOff,
-                        contentDescription = null
-                    )
-
-                    Spacer(modifier = Modifier.width(10.dp))
-
-                    Column {
-                        Text(
-                            text = "Working offline",
-                            fontWeight = FontWeight.SemiBold
-                        )
-
-                        Text(
-                            text = "Changes are saved on this device",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-            }
-
-            // Inspection header
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                text = "Facility inspection",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold
-                            )
-
-                            Text(
-                                text = "Main equipment area",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-
-                        FilterChip(
-                            selected = !submitted,
-                            onClick = {},
-                            label = {
-                                Text(
-                                    if (submitted) "Submitted" else "Draft"
-                                )
-                            }
-                        )
-                    }
-
-                    Divider()
-
-                    Text(
-                        text = "$completedRequired of ${requiredItems.size} required checks complete",
-                        fontWeight = FontWeight.SemiBold
-                    )
-
-                    LinearProgressIndicator(
-                        progress = { progress },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(8.dp)
-                    )
-                }
-            }
-
-            // Checklist
-
-            Text(
-                text = "Inspection checklist",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Column {
-
-                    items.forEachIndexed { index, item ->
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-
-                            Checkbox(
-                                checked = item.complete,
-                                onCheckedChange = { checked ->
-
-                                    items = items.toMutableList().also {
-                                        it[index] = item.copy(
-                                            complete = checked
-                                        )
-                                    }
-                                }
-                            )
-
-                            Column(
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text(
-                                    text = item.title,
-                                    fontWeight = FontWeight.Medium
-                                )
-
-                                Text(
-                                    text = if (item.required)
-                                        "Required"
-                                    else
-                                        "Optional",
-                                    style = MaterialTheme.typography.labelSmall
-                                )
-                            }
-
-                            if (item.complete) {
-                                Icon(
-                                    imageVector = Icons.Outlined.CheckCircle,
-                                    contentDescription = "Complete",
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-                        }
-
-                        if (index < items.lastIndex) {
-                            Divider()
-                        }
-                    }
-                }
-            }
-
-            // Evidence
-
-            Text(
-                text = "Evidence",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-
-            EvidenceCard(
-                icon = Icons.Outlined.CameraAlt,
-                title = "Photo evidence",
-                description = if (photoCaptured)
-                    "1 photo captured"
-                else
-                    "Required before submission",
-                complete = photoCaptured,
-                buttonText = if (photoCaptured)
-                    "Retake photo"
-                else
-                    "Capture photo",
-                onClick = {
-                    photoCaptured = !photoCaptured
-                }
-            )
-
-            EvidenceCard(
-                icon = Icons.Outlined.NoteAdd,
-                title = "Inspection notes",
-                description = if (noteAdded)
-                    "Inspection note added"
-                else
-                    "Add observations or findings",
-                complete = noteAdded,
-                buttonText = if (noteAdded)
-                    "Edit note"
-                else
-                    "Add note",
-                onClick = {
-                    noteAdded = !noteAdded
-                }
-            )
-
-            // Readiness
-
-            if (!readyToSubmit && !submitted) {
-
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Warning,
-                            contentDescription = null
-                        )
-
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Column {
-                            Text(
-                                text = "Inspection not ready",
-                                fontWeight = FontWeight.Bold
-                            )
-
-                            Text(
-                                text = "Complete all required checks and evidence."
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Submit
-
-            Button(
-                onClick = {
-                    submitted = true
-                },
-                enabled = readyToSubmit && !submitted,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Description,
-                    contentDescription = null
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = if (submitted)
-                        "Inspection submitted"
-                    else
-                        "Submit inspection"
+                    text = inspection.title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    text = inspection.location,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                StatusChip(
+                    status = inspection.status
                 )
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            item {
+                ChecklistProgressCard(
+                    completed = completedRequired,
+                    total = requiredItems.size
+                )
+            }
+
+            item {
+                Text(
+                    text = "Checklist",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            items(
+                items = checklist,
+                key = { it.id }
+            ) { item ->
+
+                ChecklistItemCard(
+                    item = item,
+                    onCheckedChange = { checked ->
+                        viewModel.completeChecklistItem(
+                            itemId = item.id,
+                            completed = checked
+                        )
+                    }
+                )
+            }
+
+            item {
+                Text(
+                    text = "Evidence",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            item {
+                EvidenceCaptureCard(
+                    noteText = noteText,
+                    onNoteChanged = {
+                        noteText = it
+                    },
+                    onAddNote = {
+                        if (noteText.isNotBlank()) {
+                            viewModel.addEvidence(
+                                inspectionId = inspection.id,
+                                checklistItemId = null,
+                                type = "NOTE",
+                                localUri = null,
+                                note = noteText.trim()
+                            )
+
+                            noteText = ""
+                        }
+                    },
+                    onTakePhoto = {
+                        showCamera = true
+                    }
+                )
+            }
+
+            items(
+                items = evidence,
+                key = { it.id }
+            ) { item ->
+
+                EvidenceCard(item)
+            }
+
+            item {
+                if (!allRequiredComplete) {
+
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = null
+                            )
+
+                            Spacer(modifier = Modifier.padding(8.dp))
+
+                            Text(
+                                text = "Complete all required checklist items before submission."
+                            )
+                        }
+                    }
+
+                } else {
+
+                    Button(
+                        onClick = {
+                            // Submission workflow will be connected later.
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Submit inspection")
+                    }
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(24.dp))
+            }
         }
     }
 }
 
 @Composable
-fun EvidenceCard(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    description: String,
-    complete: Boolean,
-    buttonText: String,
-    onClick: () -> Unit
+private fun StatusChip(
+    status: String
+) {
+    FilterChip(
+        selected = true,
+        onClick = {},
+        label = {
+            Text(status)
+        }
+    )
+}
+
+@Composable
+private fun ChecklistProgressCard(
+    completed: Int,
+    total: Int
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp)
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+
+            Icon(
+                imageVector = Icons.Default.CheckCircle,
+                contentDescription = null
+            )
+
+            Spacer(modifier = Modifier.padding(8.dp))
+
+            Column {
+                Text(
+                    text = "Required checklist",
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    text = "$completed of $total completed"
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChecklistItemCard(
+    item: ChecklistItemEntity,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+
+            androidx.compose.material3.Checkbox(
+                checked = item.completed,
+                onCheckedChange = onCheckedChange
+            )
+
+            Spacer(modifier = Modifier.padding(4.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = item.title,
+                    fontWeight = FontWeight.Medium
+                )
+
+                if (item.required) {
+                    Text(
+                        text = "Required",
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EvidenceCaptureCard(
+    noteText: String,
+    onNoteChanged: (String) -> Unit,
+    onAddNote: () -> Unit,
+    onTakePhoto: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth()
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.padding(16.dp)
         ) {
 
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Icon(
+                    imageVector = Icons.Default.PhotoCamera,
+                    contentDescription = null
+                )
 
-                Surface(
-                    modifier = Modifier.size(48.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer
-                ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        modifier = Modifier.padding(12.dp)
-                    )
-                }
+                Spacer(modifier = Modifier.padding(8.dp))
 
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = title,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Text(
-                        text = description,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-
-                if (complete) {
-                    Icon(
-                        imageVector = Icons.Outlined.CheckCircle,
-                        contentDescription = "Complete"
-                    )
-                }
+                Text(
+                    text = "Capture evidence",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
             }
 
+            Spacer(modifier = Modifier.height(12.dp))
+
             Button(
-                onClick = onClick,
+                onClick = onTakePhoto,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(buttonText)
+                Icon(
+                    imageVector = Icons.Default.PhotoCamera,
+                    contentDescription = null
+                )
+
+                Spacer(modifier = Modifier.padding(4.dp))
+
+                Text("Take photo")
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+
+            OutlinedTextField(
+                value = noteText,
+                onValueChange = onNoteChanged,
+                modifier = Modifier.fillMaxWidth(),
+                label = {
+                    Text("Evidence note")
+                },
+                placeholder = {
+                    Text("Describe what you observed")
+                },
+                minLines = 3
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Button(
+                onClick = onAddNote,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = noteText.isNotBlank()
+            ) {
+                Text("Save note")
             }
         }
     }
 }
 
 @Composable
-fun FieldProofTheme(
-    content: @Composable () -> Unit
+private fun EvidenceCard(
+    evidence: EvidenceEntity
 ) {
-    MaterialTheme(
-        content = content
-    )
+    Card(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = evidence.type,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    text = evidence.syncStatus,
+                    style = MaterialTheme.typography.labelMedium
+                )
+            }
+
+            evidence.note?.let { note ->
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = note
+                )
+            }
+        }
+    }
 }
