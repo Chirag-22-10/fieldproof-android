@@ -1,0 +1,14 @@
+# Default owners for everything in the repo.
+# Replace with real maintainer handles/teams as needed.
+*       @Chirag-22-10
+
+# Build and CI
+/.github/                 @Chirag-22-10
+/gradle/                  @Chirag-22-10
+/*.gradle.kts             @Chirag-22-10
+
+# Docs and legal
+/README.md                @Chirag-22-10
+/CONTRIBUTING.md          @Chirag-22-10
+/SECURITY.md              @Chirag-22-10
+/LICENSE                  @Chirag-22-10
