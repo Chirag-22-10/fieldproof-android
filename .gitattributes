@@ -1,0 +1,23 @@
+# Normalize line endings
+* text=auto eol=lf
+
+# Gradle wrapper must stay executable
+gradlew text eol=lf
+gradlew.bat text eol=crlf
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.jar binary
+*.apk binary
+*.aab binary
+*.so binary
+
+# Keep generated/vendored files out of diffs and language stats
+*.min.js linguist-generated
+*.pb linguist-generated
+
+# Docs
+*.md text
