@@ -1,0 +1,35 @@
+FieldProof Android
+Copyright 2026 Spacedrift
+
+This product is licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License. You may obtain
+a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+
+---------------------------------------------------------------------------
+Third-party components
+---------------------------------------------------------------------------
+
+This project depends on open-source libraries managed through Gradle. The full
+set of transitive dependencies and their licenses can be listed with:
+
+    ./gradlew :app:dependencies
+
+Notable direct dependencies and their licenses:
+
+- AndroidX libraries (Apache-2.0)
+- Jetpack Compose (Apache-2.0)
+- Dagger / Hilt (Apache-2.0)
+- Retrofit and OkHttp (Apache-2.0)
+- Kotlin and kotlinx.coroutines (Apache-2.0)
+- FastAPI, Uvicorn, Starlette, Pydantic (MIT / BSD-3-Clause) — backend skeleton
+
+All product and company names are trademarks or registered trademarks of their
+respective holders. Use of them does not imply any affiliation with or
+endorsement by them.
