@@ -13,3 +13,9 @@
 .externalNativeBuild
 .cxx
 local.properties
+.kotlin
+
+__pycache__/
+*.py[cod]
+.venv/
+venv/
